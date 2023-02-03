@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
@@ -14,40 +14,56 @@ namespace SimpleCalculator
         static void Main(string[] args)
         {
             Console.WriteLine("Enter your first number: "); 
-            double.TryParse(Console.ReadLine(), out double num1);       // Converts string input to double, (in this case, named num1.)
+            if (double.TryParse(Console.ReadLine(), out double num1) == false)      // Converts the string input into the double "num1". The if statment checks if it is false. 
+            {
+                Console.WriteLine("Invalid number. Press enter to exit.");         
+                Console.ReadLine();
+                Environment.Exit(1);                                                // Tells the user that the number they input is invalid, and ends the program with code 1.
+            }
+
             Console.WriteLine("Enter your second number: ");
-            double.TryParse(Console.ReadLine(), out double num2);       // Does the same but for num2.
-            Console.WriteLine("Enter your operation (add/subtract/divide/multiply/exit): ");
-            string operation = Console.ReadLine();
-            double numResult;                                           // A double is useful for storing decimals.
-
-            // if and else statements
-
-            if (operation == "add")
+            if (double.TryParse(Console.ReadLine(), out double num2) == false)      // Same process, but with the second number.
             {
-                numResult = num1 + num2;
-                Console.WriteLine(numResult);
-            } 
-            else if (operation == "subtract")
-            {
-                numResult = num1 - num2;
-                Console.WriteLine(numResult);
-            }
-            else if (operation == "divide")
-            {
-                numResult = num1 / num2;
-                Console.WriteLine(numResult);
-            }
-            else if (operation == "multiply")
-            {
-                numResult = num1 * num2;
-                Console.WriteLine(numResult);
-            }
-            else if (operation == "exit")
-            {
+                Console.WriteLine("Invalid number. Press enter to exit.");
+                Console.ReadLine();
                 Environment.Exit(1);
             }
 
+            Console.WriteLine("Enter your operator type's symbol (or type exit): ");
+            string op = Console.ReadLine();
+
+            // if and else statements
+
+            if (op == "+")
+            {
+                double numResult = num1 + num2;                                     // A double is useful for storing decimals.
+                Console.WriteLine(numResult);
+            } 
+            else if (op == "-")
+            {
+                double numResult = num1 - num2;                         
+                Console.WriteLine(numResult);
+            }
+            else if (op == "/")
+            {
+                double numResult = num1 / num2;                         
+                Console.WriteLine(numResult);
+            }
+            else if (op == "*")
+            {
+                double numResult = num1 * num2;                         
+                Console.WriteLine(numResult);
+            }
+            else if (op == "exit")
+            {
+                Environment.Exit(0);
+            }
+            else                                                                    // Executes if the operator input is neither "+", "-", "/", "*", or "exit." 
+            {
+                Console.WriteLine("Invalid input. The possible inputs were: Add (+), Subtract (-), Multiply (*), Divide (/), or Exit (exit).");
+            }
+
+            Console.WriteLine("Press enter to exit.");
             Console.ReadLine();                                         // Prevents the program from closing.
         }
     }
