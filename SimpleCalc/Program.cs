@@ -13,9 +13,9 @@ namespace SimpleCalculator
     {
         static void Main(string[] args)
         {
-            Console.WriteLine("Enter your first numer: "); 
+            Console.WriteLine("Enter your first number: "); 
             double.TryParse(Console.ReadLine(), out double num1);       // Converts string input to double, (in this case, named num1.)
-            Console.WriteLine("Enter your second numer: ");
+            Console.WriteLine("Enter your second number: ");
             double.TryParse(Console.ReadLine(), out double num2);       // Does the same but for num2.
             Console.WriteLine("Enter your operation (add/subtract/divide/multiply/exit): ");
             string operation = Console.ReadLine();
