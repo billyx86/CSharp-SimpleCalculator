@@ -13,7 +13,9 @@ jobs:
       - name: Install Mono
         run: sudo apt-get update -qq && sudo apt-get install -y mono-complete
       - name: Compile
-        run: mcs -warn:4 -out:SimpleCalc/bin/Calc.exe SimpleCalc/Program.cs
+        run: |
+          mkdir -p SimpleCalc/bin
+          mcs -warn:4 -out:SimpleCalc/bin/Calc.exe SimpleCalc/Program.cs
       - name: Smoke test (1 + 2 = 3)
         run: printf '1\n2\n+\n\n' | mono SimpleCalc/bin/Calc.exe | grep -q '^3$'
       - name: Smoke test (div by zero guarded)
