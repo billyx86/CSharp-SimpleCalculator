@@ -46,9 +46,16 @@ namespace SimpleCalculator
             }
             else if (op == "/")
             {
-                double numResult = num1 / num2;                         
-                Console.WriteLine(numResult);
-            }
+                if (num2 == 0)                                                     // Guards against division by zero, which would otherwise print "Infinity".
+                {
+                    Console.WriteLine("Cannot divide by zero.");                   // Tells the user the operation is invalid, in the same style as the other error messages.
+                }
+                else
+                {
+                    double numResult = num1 / num2;
+                    Console.WriteLine(numResult);
+                }
+            } 
             else if (op == "*")
             {
                 double numResult = num1 * num2;                         
