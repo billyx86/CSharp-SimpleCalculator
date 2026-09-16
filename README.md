@@ -1,2 +1,81 @@
 # CSharp-SimpleCalculator
-A simple command line-based calculator written in C#.
+
+A simple command line calculator written in C#. You are asked for two numbers and
+an operator, and it prints the result. It then loops back and asks for the next
+calculation, so you can keep going until you type `exit`.
+
+It was written as a first full program and GitHub repository, so it is
+deliberately small and heavily commented — each line explains what is happening
+and why.
+
+## Requirements
+
+The project targets **.NET Framework 4.7.2**, but on Linux/Mac it builds and runs
+under **Mono**. On Windows you can also open the `.sln` in Visual Studio.
+
+- Linux/Mac: [Mono](https://www.mono-project.com/) (provides `mcs` and `mono`)
+- Windows: .NET Framework 4.7.2 (or Visual Studio)
+
+## Building
+
+With Mono, from the repository root:
+
+```sh
+mcs -warn:4 -out:SimpleCalc/bin/Calc.exe SimpleCalc/Program.cs
+```
+
+(As with `mcs`, create the output directory first if it does not already exist —
+the CI workflow does `mkdir -p SimpleCalc/bin` before compiling.)
+
+## Running
+
+```sh
+mono SimpleCalc/bin/Calc.exe
+```
+
+Example session:
+
+```
+Enter your first number:
+12
+Enter your second number:
+4
+Enter your operator type's symbol (or type exit):
+*
+48
+Enter your first number:
+10
+Enter your second number:
+3
+Enter your operator type's symbol (or type exit):
+exit
+Goodbye.
+```
+
+## Input
+
+Two numbers (whole or decimal), then an operator. The accepted operators are:
+
+| Symbol | Meaning     |
+|--------|-------------|
+| `+`    | Add         |
+| `-`    | Subtract    |
+| `*`    | Multiply    |
+| `/`    | Divide      |
+| `exit` | End the session |
+
+Notes on edge cases:
+
+- **Division by zero** is guarded — it prints `Cannot divide by zero.` rather than `Infinity`.
+- **`NaN`, `Infinity` and `-Infinity`** are rejected as numbers even though
+  `double.TryParse` accepts them, so they can never sneak into a result.
+- **Invalid numbers or operators** print a message and simply re-prompt; they do
+  not end the session.
+- **End of input** (for example when the program is run from a pipe and the input
+  runs out) ends the session cleanly instead of formatting an empty calculation.
+
+## Tests
+
+The [CI workflow](.github/workflows/ci.yml) compiles the program with `mcs -warn:4`
+and runs a set of smoke tests (a normal calculation, division by zero, a multi-calc
+session, `NaN`/`Infinity` rejection, and a clean end-of-file exit) using `mono`.
