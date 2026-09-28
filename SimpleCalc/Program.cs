@@ -68,6 +68,7 @@ namespace SimpleCalculator
                     Console.WriteLine("No more input - goodbye.");
                     break;
                 }
+                op = op.Trim();                                      // A stray space around the operator (e.g. "+ ") shouldn't count as invalid input.
 
                 // if and else statements
 
@@ -98,9 +99,9 @@ namespace SimpleCalculator
                     double numResult = num1 * num2;
                     Console.WriteLine(numResult.ToString(CultureInfo.InvariantCulture));
                 }
-                else if (op == "exit")
+                else if (string.Equals(op, "exit", StringComparison.OrdinalIgnoreCase))
                 {
-                    break;                                                             // Leave the loop and end the session.
+                    break;                                                             // Leave the loop and end the session. "Exit", "EXIT" and " exit " all work too.
                 }
                 else                                                                    // Executes if the operator input is neither "+", "-", "/", "*", or "exit."
                 {
