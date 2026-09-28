@@ -30,3 +30,25 @@ jobs:
           grep -q 'Invalid number' inf.txt && ! grep -q '^Infinity$' inf.txt
       - name: "Smoke test (EOF ends the session cleanly)"
         run: printf '1\n2\n+\n' | mono SimpleCalc/bin/Calc.exe > out.txt && grep -q '^3$' out.txt && grep -q 'No more input' out.txt
+      - name: "Smoke test (locale-independent decimal parse and print, #8)"
+        run: |
+          # Under de_DE the dot is a thousands separator, so '5.5' used to parse as 55.
+          OUT=$(printf '5.5\n1\n+\nexit\n' | LANG=de_DE.UTF-8 LC_ALL=de_DE.UTF-8 mono SimpleCalc/bin/Calc.exe)
+          echo "$OUT" | grep -q '^6.5$'
+          # And the result prints with a dot, not a comma, under de_DE.
+          OUT=$(printf '10\n4\n/\nexit\n' | LANG=de_DE.UTF-8 LC_ALL=de_DE.UTF-8 mono SimpleCalc/bin/Calc.exe)
+          echo "$OUT" | grep -q '^2.5$'
+          ! echo "$OUT" | grep -q '2,5'
+      - name: "Smoke test (operator trimmed, exit case-insensitive, #10)"
+        run: |
+          # A stray space around the operator no longer counts as invalid input.
+          OUT=$(printf '1\n2\n+ \nexit\n' | mono SimpleCalc/bin/Calc.exe)
+          echo "$OUT" | grep -q '^3$'
+          # 'Exit' and ' EXIT ' end the session just like 'exit' (one prompt round each).
+          OUT=$(printf '1\n2\nExit\n' | mono SimpleCalc/bin/Calc.exe)
+          [ "$(echo "$OUT" | grep -c 'Enter your first number')" -eq 1 ]
+          OUT=$(printf '1\n2\n EXIT \n' | mono SimpleCalc/bin/Calc.exe)
+          [ "$(echo "$OUT" | grep -c 'Enter your first number')" -eq 1 ]
+          # A genuinely invalid operator is still rejected.
+          OUT=$(printf '1\n2\n%%\nexit\n' | mono SimpleCalc/bin/Calc.exe)
+          echo "$OUT" | grep -q 'Invalid input'

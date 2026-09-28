@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Globalization;
 using System.IO;
 using System.Linq;
 using System.Runtime.CompilerServices;
@@ -11,6 +12,19 @@ namespace SimpleCalculator
 {
     internal class Program
     {
+        // Parses a number the same way no matter which locale the program is
+        // running under. The default double.TryParse(input) follows the
+        // current culture, so under e.g. de_DE "5.5" is read as 55 (the dot is
+        // a thousands separator there) and "5,5" is read as 5.5. Forcing the
+        // invariant culture means the decimal point is always a dot, as
+        // documented in the README (issue #8).
+        static bool TryParseNumber(string input, out double number)
+        {
+            number = 0;
+            return double.TryParse(input, NumberStyles.Float | NumberStyles.AllowLeadingSign,
+                                   CultureInfo.InvariantCulture, out number);
+        }
+
         static void Main(string[] args)
         {
             // Loop so the user can do as many calculations as they like in one session.
@@ -27,7 +41,7 @@ namespace SimpleCalculator
                     break;
                 }
                 double num1;
-                if (double.TryParse(firstInput, out num1) == false || double.IsNaN(num1) || double.IsInfinity(num1))   // Converts the string into the double "num1". It also rejects "NaN", "Infinity" and "-Infinity", which TryParse would otherwise happily accept as numbers.
+                if (TryParseNumber(firstInput, out num1) == false || double.IsNaN(num1) || double.IsInfinity(num1))   // Converts the string into the double "num1". It also rejects "NaN", "Infinity" and "-Infinity", which TryParse would otherwise happily accept as numbers.
                 {
                     Console.WriteLine("Invalid number. The possible inputs were real numbers, for example 5 or -3.5.");  // Tells the user the number is not a real number.
                     continue;                                               // Skip to the next calculation rather than ending the whole session.
@@ -41,7 +55,7 @@ namespace SimpleCalculator
                     break;
                 }
                 double num2;
-                if (double.TryParse(secondInput, out num2) == false || double.IsNaN(num2) || double.IsInfinity(num2))   // Same process, but with the second number.
+                if (TryParseNumber(secondInput, out num2) == false || double.IsNaN(num2) || double.IsInfinity(num2))   // Same process, but with the second number.
                 {
                     Console.WriteLine("Invalid number. The possible inputs were real numbers, for example 5 or -3.5.");
                     continue;
@@ -54,18 +68,19 @@ namespace SimpleCalculator
                     Console.WriteLine("No more input - goodbye.");
                     break;
                 }
+                op = op.Trim();                                      // A stray space around the operator (e.g. "+ ") shouldn't count as invalid input.
 
                 // if and else statements
 
                 if (op == "+")
                 {
                     double numResult = num1 + num2;                                     // A double is useful for storing decimals.
-                    Console.WriteLine(numResult);
+                    Console.WriteLine(numResult.ToString(CultureInfo.InvariantCulture));
                 }
                 else if (op == "-")
                 {
                     double numResult = num1 - num2;
-                    Console.WriteLine(numResult);
+                    Console.WriteLine(numResult.ToString(CultureInfo.InvariantCulture));
                 }
                 else if (op == "/")
                 {
@@ -76,17 +91,17 @@ namespace SimpleCalculator
                     else
                     {
                         double numResult = num1 / num2;
-                        Console.WriteLine(numResult);
+                        Console.WriteLine(numResult.ToString(CultureInfo.InvariantCulture));
                     }
                 }
                 else if (op == "*")
                 {
                     double numResult = num1 * num2;
-                    Console.WriteLine(numResult);
+                    Console.WriteLine(numResult.ToString(CultureInfo.InvariantCulture));
                 }
-                else if (op == "exit")
+                else if (string.Equals(op, "exit", StringComparison.OrdinalIgnoreCase))
                 {
-                    break;                                                             // Leave the loop and end the session.
+                    break;                                                             // Leave the loop and end the session. "Exit", "EXIT" and " exit " all work too.
                 }
                 else                                                                    // Executes if the operator input is neither "+", "-", "/", "*", or "exit."
                 {

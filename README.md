@@ -73,9 +73,24 @@ Notes on edge cases:
   not end the session.
 - **End of input** (for example when the program is run from a pipe and the input
   runs out) ends the session cleanly instead of formatting an empty calculation.
+- **Locale-independent numbers**: numbers are parsed and printed using the
+  invariant culture, so the decimal point is always a dot no matter which
+  locale the program runs under. Under e.g. `de_DE` the input `5.5` still means
+  five-and-a-half (it is not read as the integer `55`), and `10 / 4` prints
+  `2.5`, not `2,5`.
+- **Operator input is forgiving**: the operator is trimmed before it is
+  compared, so `+ ` with a stray space works. The exit keyword is matched
+  case-insensitively, so `exit`, `Exit` and ` EXIT ` all end the session. The
+  arithmetic operators themselves keep exact matching — `+` is still not the
+  same as `%`.
 
 ## Tests
 
 The [CI workflow](.github/workflows/ci.yml) compiles the program with `mcs -warn:4`
 and runs a set of smoke tests (a normal calculation, division by zero, a multi-calc
-session, `NaN`/`Infinity` rejection, and a clean end-of-file exit) using `mono`.
+session, `NaN`/`Infinity` rejection, a clean end-of-file exit, locale-independent
+number parsing/printing under `de_DE`, and forgiving operator input) using `mono`.
+
+## License
+
+GPL-3.0 — see the [LICENSE](LICENSE) file.
