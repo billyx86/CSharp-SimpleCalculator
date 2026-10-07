@@ -25,6 +25,26 @@ namespace SimpleCalculator
                                    CultureInfo.InvariantCulture, out number);
         }
 
+        // Prints the result of an operation — or a friendly overflow message if
+        // the arithmetic produced a non-finite value. The input validation
+        // above rejects NaN/Infinity inputs, but a result can still overflow
+        // even from perfectly valid numbers: 1e308 * 10, 1e308 + 1e308 or
+        // 1e308 - -1e308 all overflow double.MaxValue (~1.8e308), and 1e308 /
+        // 1e-308 overflows too. Rather than printing "Infinity" (which the
+        // program itself treats as an invalid number), report it the same
+        // way division by zero is reported. (Issue #14)
+        static void PrintOperationResult(double numResult)
+        {
+            if (double.IsNaN(numResult) || double.IsInfinity(numResult))
+            {
+                Console.WriteLine("Result overflowed - the answer is too large for this calculator. Try smaller numbers.");
+            }
+            else
+            {
+                Console.WriteLine(numResult.ToString(CultureInfo.InvariantCulture));
+            }
+        }
+
         static void Main(string[] args)
         {
             // Loop so the user can do as many calculations as they like in one session.
@@ -75,12 +95,12 @@ namespace SimpleCalculator
                 if (op == "+")
                 {
                     double numResult = num1 + num2;                                     // A double is useful for storing decimals.
-                    Console.WriteLine(numResult.ToString(CultureInfo.InvariantCulture));
+                    PrintOperationResult(numResult);
                 }
                 else if (op == "-")
                 {
                     double numResult = num1 - num2;
-                    Console.WriteLine(numResult.ToString(CultureInfo.InvariantCulture));
+                    PrintOperationResult(numResult);
                 }
                 else if (op == "/")
                 {
@@ -90,14 +110,14 @@ namespace SimpleCalculator
                     }
                     else
                     {
-                        double numResult = num1 / num2;
-                        Console.WriteLine(numResult.ToString(CultureInfo.InvariantCulture));
+                        double numResult = num1 / num2;                                // A tiny divisor (1 / 1e-308) can still overflow, so route through the same guard.
+                        PrintOperationResult(numResult);
                     }
                 }
                 else if (op == "*")
                 {
                     double numResult = num1 * num2;
-                    Console.WriteLine(numResult.ToString(CultureInfo.InvariantCulture));
+                    PrintOperationResult(numResult);
                 }
                 else if (string.Equals(op, "exit", StringComparison.OrdinalIgnoreCase))
                 {

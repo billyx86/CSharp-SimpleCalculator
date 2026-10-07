@@ -69,6 +69,10 @@ Notes on edge cases:
 - **Division by zero** is guarded — it prints `Cannot divide by zero.` rather than `Infinity`.
 - **`NaN`, `Infinity` and `-Infinity`** are rejected as numbers even though
   `double.TryParse` accepts them, so they can never sneak into a result.
+- **Overflowing results** are reported, not printed. Valid finite inputs can
+  still overflow the arithmetic (`1e308 * 10`, `1e308 + 1e308`, `1e308 - -1e308`
+  all exceed `double.MaxValue`, ~1.8e308); the program prints a friendly
+  "result overflowed" message instead of `Infinity`.
 - **Invalid numbers or operators** print a message and simply re-prompt; they do
   not end the session.
 - **End of input** (for example when the program is run from a pipe and the input
@@ -89,7 +93,8 @@ Notes on edge cases:
 The [CI workflow](.github/workflows/ci.yml) compiles the program with `mcs -warn:4`
 and runs a set of smoke tests (a normal calculation, division by zero, a multi-calc
 session, `NaN`/`Infinity` rejection, a clean end-of-file exit, locale-independent
-number parsing/printing under `de_DE`, and forgiving operator input) using `mono`.
+number parsing/printing under `de_DE`, forgiving operator input, and overflow
+results being reported rather than printed as `Infinity`) using `mono`.
 
 ## License
 
