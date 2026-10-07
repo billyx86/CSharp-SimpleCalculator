@@ -52,3 +52,20 @@ jobs:
           # A genuinely invalid operator is still rejected.
           OUT=$(printf '1\n2\n%%\nexit\n' | mono SimpleCalc/bin/Calc.exe)
           echo "$OUT" | grep -q 'Invalid input'
+      - name: "Smoke test (overflow results reported, not Infinity, #14)"
+        run: |
+          # 1e308 * 10 overflows double.MaxValue; it must not print "Infinity".
+          OUT=$(printf '1e308\n10\n*\nexit\n' | mono SimpleCalc/bin/Calc.exe)
+          echo "$OUT" | grep -q 'Result overflowed'
+          ! echo "$OUT" | grep -q '^Infinity$'
+          # 1e308 + 1e308 overflows too.
+          OUT=$(printf '1e308\n1e308\n+\nexit\n' | mono SimpleCalc/bin/Calc.exe)
+          echo "$OUT" | grep -q 'Result overflowed'
+          ! echo "$OUT" | grep -q '^Infinity$'
+          # 1e308 - -1e308 overflows via subtraction.
+          OUT=$(printf '1e308\n-1e308\n-\nexit\n' | mono SimpleCalc/bin/Calc.exe)
+          echo "$OUT" | grep -q 'Result overflowed'
+          ! echo "$OUT" | grep -q '^Infinity$'
+          # A still-finite large result (1e308, which is < MaxValue) is NOT flagged.
+          OUT=$(printf '1\n1e-308\n/\nexit\n' | mono SimpleCalc/bin/Calc.exe)
+          ! echo "$OUT" | grep -q 'Result overflowed'
