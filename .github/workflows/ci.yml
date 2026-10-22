@@ -69,3 +69,15 @@ jobs:
           # A still-finite large result (1e308, which is < MaxValue) is NOT flagged.
           OUT=$(printf '1\n1e-308\n/\nexit\n' | mono SimpleCalc/bin/Calc.exe)
           ! echo "$OUT" | grep -q 'Result overflowed'
+      - name: "Guard (Program.cs stays minimal: no dead using directives, #13)"
+        run: |
+          # The exercise code is meant to teach C# basics with only the
+          # directives a reader needs ('using System;' for Console/double and
+          # 'using System.Globalization;' for CultureInfo). Fail if any of the
+          # seven usings the original template shipped with reappear.
+          for u in System.Collections.Generic System.IO System.Linq System.Runtime.CompilerServices System.Runtime.InteropServices System.Text System.Threading.Tasks; do
+            if grep -q "using $u;" SimpleCalc/Program.cs; then
+              echo "Unexpected 'using $u;' in SimpleCalc/Program.cs" >&2
+              exit 1
+            fi
+          done
