@@ -77,6 +77,35 @@ jobs:
           OUT=$(printf '1\n0\n%%\nexit\n' | mono SimpleCalc/bin/Calc.exe)
           echo "$OUT" | grep -q 'Cannot take the modulo of zero'
           ! echo "$OUT" | grep -q '^NaN$'
+      - name: "Smoke test (history command, #19)"
+        run: |
+          # Two calculations (1+2=3, 4*5=20), then 'history' must list both, oldest first.
+          OUT=$(printf '1\n2\n+\n4\n5\n*\n1\n1\nhistory\nexit\n' | mono SimpleCalc/bin/Calc.exe)
+          echo "$OUT" | grep -q 'Recent results (oldest first):'
+          # The two results appear in order after the header.
+          echo "$OUT" | sed -n '/Recent results/,$p' | grep -q '^3$'
+          echo "$OUT" | sed -n '/Recent results/,$p' | grep -q '^20$'
+          # The history command is case-insensitive, like exit.
+          OUT=$(printf '1\n2\n+\n7\n8\n*\n1\n1\nHISTORY\nexit\n' | mono SimpleCalc/bin/Calc.exe)
+          echo "$OUT" | grep -q 'Recent results (oldest first):'
+          # Only the last 3 results are kept: 4 calcs (3, 20, 6, 8) then history
+          # must show 20, 6 and 8 — the oldest result (3) has dropped off.
+          OUT=$(printf '1\n2\n+\n4\n5\n*\n7\n1\n-\n3\n5\n+\n1\n1\nhistory\nexit\n' | mono SimpleCalc/bin/Calc.exe)
+          HIST=$(echo "$OUT" | sed -n '/Recent results/,$p')
+          echo "$HIST" | grep -q '^20$'
+          echo "$HIST" | grep -q '^6$'
+          echo "$HIST" | grep -q '^8$'
+          ! echo "$HIST" | grep -q '^3$'
+          # With no results yet, history says so and the session continues.
+          OUT=$(printf '1\n2\nhistory\n3\n4\n+\nexit\n' | mono SimpleCalc/bin/Calc.exe)
+          echo "$OUT" | grep -q 'No results yet.'
+          echo "$OUT" | grep -q '^7$'
+          # Failed operations (division by zero) are not recorded: 1+2=3 then
+          # 1/0, then history must show only the 3.
+          OUT=$(printf '1\n2\n+\n1\n0\n/\n1\n1\nhistory\nexit\n' | mono SimpleCalc/bin/Calc.exe)
+          HIST=$(echo "$OUT" | sed -n '/Recent results/,$p')
+          echo "$HIST" | grep -q '^3$'
+          [ "$(echo "$HIST" | grep -c '^[0-9.-]\+$')" -eq 1 ]
       - name: "Smoke test (overflow results reported, not Infinity, #14)"
         run: |
           # 1e308 * 10 overflows double.MaxValue; it must not print "Infinity".

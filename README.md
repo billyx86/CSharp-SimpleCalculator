@@ -65,6 +65,7 @@ Two numbers (whole or decimal), then an operator. The accepted operators are:
 | `^`    | Power       |
 | `%`    | Modulo      |
 | `exit` | End the session |
+| `history` | Show the results of the last 3 calculations |
 
 Notes on edge cases:
 
@@ -96,13 +97,49 @@ Notes on edge cases:
   routed through the overflow guard, so `1e308 ^ 2` is reported rather than
   printed as `Infinity`.
 
+## History
+
+Typing `history` (case-insensitive, like `exit`) where the operator is
+expected prints the results of the last three calculations, oldest first, and
+then continues the session:
+
+```
+Enter your first number:
+1
+Enter your second number:
+2
+Enter your operator type's symbol (or type exit):
++
+3
+Enter your first number:
+4
+Enter your second number:
+5
+Enter your operator type's symbol (or type exit):
+*
+20
+Enter your first number:
+1
+Enter your second number:
+1
+Enter your operator type's symbol (or type exit):
+history
+Recent results (oldest first):
+3
+20
+```
+
+Only successful, finite results are remembered — division/modulo by zero and
+overflowing results are not. When more than three results exist, the oldest
+one drops off.
+
 ## Tests
 
 The [CI workflow](.github/workflows/ci.yml) compiles the program with `mcs -warn:4`
 and runs a set of smoke tests (a normal calculation, division by zero, a multi-calc
 session, `NaN`/`Infinity` rejection, a clean end-of-file exit, locale-independent
 number parsing/printing under `de_DE`, forgiving operator input, power (`^`),
-modulo (`%`) including modulo-by-zero, and overflow
+modulo (`%`) including modulo-by-zero, the `history` command, and overflow
 results being reported rather than printed as `Infinity`) using `mono`.
 
 ## License

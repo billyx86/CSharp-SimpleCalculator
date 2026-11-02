@@ -5,6 +5,45 @@ namespace SimpleCalculator
 {
     internal class Program
     {
+        // A small ring buffer that remembers the last few results of a session
+        // so the user can type "history" to see them again. Only the last
+        // HistorySize results are kept; older ones are overwritten. A plain
+        // array is used (no List<T>) to stay at the same beginner level as the
+        // rest of the program. (Issue #19)
+        const int HistorySize = 3;
+        static readonly string[] history = new string[HistorySize];
+        static int historyCount = 0;   // How many results are stored (at most HistorySize).
+        static int historyNext = 0;    // Where the next result is written.
+
+        // Remember a result string so ShowHistory can print it. Once the
+        // buffer is full the oldest entry is overwritten. (Issue #19)
+        static void RememberResult(string result)
+        {
+            history[historyNext] = result;
+            historyNext = (historyNext + 1) % HistorySize;
+            if (historyCount < HistorySize)
+            {
+                historyCount++;
+            }
+        }
+
+        // Prints the remembered results, oldest first, for the "history"
+        // command. (Issue #19)
+        static void ShowHistory()
+        {
+            if (historyCount == 0)
+            {
+                Console.WriteLine("No results yet.");
+                return;
+            }
+            Console.WriteLine("Recent results (oldest first):");
+            int first = (historyNext - historyCount + HistorySize) % HistorySize;
+            for (int i = 0; i < historyCount; i++)
+            {
+                Console.WriteLine(history[(first + i) % HistorySize]);
+            }
+        }
+
         // Parses a number the same way no matter which locale the program is
         // running under. The default double.TryParse(input) follows the
         // current culture, so under e.g. de_DE "5.5" is read as 55 (the dot is
@@ -35,6 +74,7 @@ namespace SimpleCalculator
             else
             {
                 Console.WriteLine(numResult.ToString(CultureInfo.InvariantCulture));
+                RememberResult(numResult.ToString(CultureInfo.InvariantCulture));
             }
         }
 
@@ -89,6 +129,15 @@ namespace SimpleCalculator
                 if (string.Equals(op, "exit", StringComparison.OrdinalIgnoreCase))
                 {
                     break;                                                             // Leave the loop and end the session.
+                }
+
+                // "history" is a command, not an operator: it prints the
+                // results of the last few calculations and continues the
+                // session. Like exit it is matched case-insensitively. (Issue #19)
+                if (string.Equals(op, "history", StringComparison.OrdinalIgnoreCase))
+                {
+                    ShowHistory();
+                    continue;                                                          // Loop back and ask for the next calculation.
                 }
 
                 // switch statement
