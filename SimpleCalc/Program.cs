@@ -5,6 +5,45 @@ namespace SimpleCalculator
 {
     internal class Program
     {
+        // A small ring buffer that remembers the last few results of a session
+        // so the user can type "history" to see them again. Only the last
+        // HistorySize results are kept; older ones are overwritten. A plain
+        // array is used (no List<T>) to stay at the same beginner level as the
+        // rest of the program. (Issue #19)
+        const int HistorySize = 3;
+        static readonly string[] history = new string[HistorySize];
+        static int historyCount = 0;   // How many results are stored (at most HistorySize).
+        static int historyNext = 0;    // Where the next result is written.
+
+        // Remember a result string so ShowHistory can print it. Once the
+        // buffer is full the oldest entry is overwritten. (Issue #19)
+        static void RememberResult(string result)
+        {
+            history[historyNext] = result;
+            historyNext = (historyNext + 1) % HistorySize;
+            if (historyCount < HistorySize)
+            {
+                historyCount++;
+            }
+        }
+
+        // Prints the remembered results, oldest first, for the "history"
+        // command. (Issue #19)
+        static void ShowHistory()
+        {
+            if (historyCount == 0)
+            {
+                Console.WriteLine("No results yet.");
+                return;
+            }
+            Console.WriteLine("Recent results (oldest first):");
+            int first = (historyNext - historyCount + HistorySize) % HistorySize;
+            for (int i = 0; i < historyCount; i++)
+            {
+                Console.WriteLine(history[(first + i) % HistorySize]);
+            }
+        }
+
         // Parses a number the same way no matter which locale the program is
         // running under. The default double.TryParse(input) follows the
         // current culture, so under e.g. de_DE "5.5" is read as 55 (the dot is
@@ -35,6 +74,7 @@ namespace SimpleCalculator
             else
             {
                 Console.WriteLine(numResult.ToString(CultureInfo.InvariantCulture));
+                RememberResult(numResult.ToString(CultureInfo.InvariantCulture));
             }
         }
 
@@ -83,42 +123,90 @@ namespace SimpleCalculator
                 }
                 op = op.Trim();                                      // A stray space around the operator (e.g. "+ ") shouldn't count as invalid input.
 
-                // if and else statements
+                // The exit keyword is matched case-insensitively ("Exit",
+                // "EXIT", " exit " all work), which a string switch on the
+                // raw operator can't express, so it is checked first.
+                if (string.Equals(op, "exit", StringComparison.OrdinalIgnoreCase))
+                {
+                    break;                                                             // Leave the loop and end the session.
+                }
 
-                if (op == "+")
+                // "history" is a command, not an operator: it prints the
+                // results of the last few calculations and continues the
+                // session. Like exit it is matched case-insensitively. (Issue #19)
+                if (string.Equals(op, "history", StringComparison.OrdinalIgnoreCase))
                 {
-                    double numResult = num1 + num2;                                     // A double is useful for storing decimals.
-                    PrintOperationResult(numResult);
+                    ShowHistory();
+                    continue;                                                          // Loop back and ask for the next calculation.
                 }
-                else if (op == "-")
+
+                // switch statement
+
+                switch (op)
                 {
-                    double numResult = num1 - num2;
-                    PrintOperationResult(numResult);
-                }
-                else if (op == "/")
-                {
-                    if (num2 == 0)                                                     // Guards against division by zero, which would otherwise print "Infinity".
+                    case "+":
                     {
-                        Console.WriteLine("Cannot divide by zero.");                   // Tells the user the operation is invalid, in the same style as the other error messages.
-                    }
-                    else
-                    {
-                        double numResult = num1 / num2;                                // A tiny divisor (1 / 1e-308) can still overflow, so route through the same guard.
+                        double numResult = num1 + num2;                                     // A double is useful for storing decimals.
                         PrintOperationResult(numResult);
+                        break;
                     }
-                }
-                else if (op == "*")
-                {
-                    double numResult = num1 * num2;
-                    PrintOperationResult(numResult);
-                }
-                else if (string.Equals(op, "exit", StringComparison.OrdinalIgnoreCase))
-                {
-                    break;                                                             // Leave the loop and end the session. "Exit", "EXIT" and " exit " all work too.
-                }
-                else                                                                    // Executes if the operator input is neither "+", "-", "/", "*", or "exit."
-                {
-                    Console.WriteLine("Invalid input. The possible inputs were: Add (+), Subtract (-), Multiply (*), Divide (/), or Exit (exit).");
+                    case "-":
+                    {
+                        double numResult = num1 - num2;
+                        PrintOperationResult(numResult);
+                        break;
+                    }
+                    case "/":
+                    {
+                        if (num2 == 0)                                                     // Guards against division by zero, which would otherwise print "Infinity".
+                        {
+                            Console.WriteLine("Cannot divide by zero.");                   // Tells the user the operation is invalid, in the same style as the other error messages.
+                        }
+                        else
+                        {
+                            double numResult = num1 / num2;                                // A tiny divisor (1 / 1e-308) can still overflow, so route through the same guard.
+                            PrintOperationResult(numResult);
+                        }
+                        break;
+                    }
+                    case "*":
+                    {
+                        double numResult = num1 * num2;
+                        PrintOperationResult(numResult);
+                        break;
+                    }
+                    case "^":
+                    {
+                        // C#'s '^' operator is bitwise XOR and is not defined for
+                        // doubles, so exponentiation uses Math.Pow instead. The
+                        // result can overflow (1e308 ^ 2 exceeds double.MaxValue),
+                        // so it is routed through the same guard as the other
+                        // operations. (Issue #17)
+                        double numResult = Math.Pow(num1, num2);
+                        PrintOperationResult(numResult);
+                        break;
+                    }
+                    case "%":
+                    {
+                        // The double '%' operator returns NaN when the second
+                        // operand is zero, so it is guarded the same way division
+                        // is. (Issue #17)
+                        if (num2 == 0)
+                        {
+                            Console.WriteLine("Cannot take the modulo of zero.");
+                        }
+                        else
+                        {
+                            double numResult = num1 % num2;
+                            PrintOperationResult(numResult);
+                        }
+                        break;
+                    }
+                    default:                                                                // Executes if the operator is none of "+", "-", "/", "*", "^", or "%".
+                    {
+                        Console.WriteLine("Invalid input. The possible inputs were: Add (+), Subtract (-), Multiply (*), Divide (/), Power (^), Modulo (%), or Exit (exit).");
+                        break;
+                    }
                 }
             }
 
