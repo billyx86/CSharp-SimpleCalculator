@@ -83,42 +83,54 @@ namespace SimpleCalculator
                 }
                 op = op.Trim();                                      // A stray space around the operator (e.g. "+ ") shouldn't count as invalid input.
 
-                // if and else statements
+                // The exit keyword is matched case-insensitively ("Exit",
+                // "EXIT", " exit " all work), which a string switch on the
+                // raw operator can't express, so it is checked first.
+                if (string.Equals(op, "exit", StringComparison.OrdinalIgnoreCase))
+                {
+                    break;                                                             // Leave the loop and end the session.
+                }
 
-                if (op == "+")
+                // switch statement
+
+                switch (op)
                 {
-                    double numResult = num1 + num2;                                     // A double is useful for storing decimals.
-                    PrintOperationResult(numResult);
-                }
-                else if (op == "-")
-                {
-                    double numResult = num1 - num2;
-                    PrintOperationResult(numResult);
-                }
-                else if (op == "/")
-                {
-                    if (num2 == 0)                                                     // Guards against division by zero, which would otherwise print "Infinity".
+                    case "+":
                     {
-                        Console.WriteLine("Cannot divide by zero.");                   // Tells the user the operation is invalid, in the same style as the other error messages.
-                    }
-                    else
-                    {
-                        double numResult = num1 / num2;                                // A tiny divisor (1 / 1e-308) can still overflow, so route through the same guard.
+                        double numResult = num1 + num2;                                     // A double is useful for storing decimals.
                         PrintOperationResult(numResult);
+                        break;
                     }
-                }
-                else if (op == "*")
-                {
-                    double numResult = num1 * num2;
-                    PrintOperationResult(numResult);
-                }
-                else if (string.Equals(op, "exit", StringComparison.OrdinalIgnoreCase))
-                {
-                    break;                                                             // Leave the loop and end the session. "Exit", "EXIT" and " exit " all work too.
-                }
-                else                                                                    // Executes if the operator input is neither "+", "-", "/", "*", or "exit."
-                {
-                    Console.WriteLine("Invalid input. The possible inputs were: Add (+), Subtract (-), Multiply (*), Divide (/), or Exit (exit).");
+                    case "-":
+                    {
+                        double numResult = num1 - num2;
+                        PrintOperationResult(numResult);
+                        break;
+                    }
+                    case "/":
+                    {
+                        if (num2 == 0)                                                     // Guards against division by zero, which would otherwise print "Infinity".
+                        {
+                            Console.WriteLine("Cannot divide by zero.");                   // Tells the user the operation is invalid, in the same style as the other error messages.
+                        }
+                        else
+                        {
+                            double numResult = num1 / num2;                                // A tiny divisor (1 / 1e-308) can still overflow, so route through the same guard.
+                            PrintOperationResult(numResult);
+                        }
+                        break;
+                    }
+                    case "*":
+                    {
+                        double numResult = num1 * num2;
+                        PrintOperationResult(numResult);
+                        break;
+                    }
+                    default:                                                                // Executes if the operator is none of "+", "-", "/", or "*".
+                    {
+                        Console.WriteLine("Invalid input. The possible inputs were: Add (+), Subtract (-), Multiply (*), Divide (/), or Exit (exit).");
+                        break;
+                    }
                 }
             }
 
