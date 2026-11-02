@@ -62,17 +62,21 @@ Two numbers (whole or decimal), then an operator. The accepted operators are:
 | `-`    | Subtract    |
 | `*`    | Multiply    |
 | `/`    | Divide      |
+| `^`    | Power       |
+| `%`    | Modulo      |
 | `exit` | End the session |
 
 Notes on edge cases:
 
 - **Division by zero** is guarded — it prints `Cannot divide by zero.` rather than `Infinity`.
+- **Modulo by zero** is guarded the same way — `1 % 0` prints
+  `Cannot take the modulo of zero.` rather than `NaN`.
 - **`NaN`, `Infinity` and `-Infinity`** are rejected as numbers even though
   `double.TryParse` accepts them, so they can never sneak into a result.
 - **Overflowing results** are reported, not printed. Valid finite inputs can
   still overflow the arithmetic (`1e308 * 10`, `1e308 + 1e308`, `1e308 - -1e308`
-  all exceed `double.MaxValue`, ~1.8e308); the program prints a friendly
-  "result overflowed" message instead of `Infinity`.
+  and `1e308 ^ 2` all exceed `double.MaxValue`, ~1.8e308); the program prints a
+  friendly "result overflowed" message instead of `Infinity`.
 - **Invalid numbers or operators** print a message and simply re-prompt; they do
   not end the session.
 - **End of input** (for example when the program is run from a pipe and the input
@@ -86,14 +90,19 @@ Notes on edge cases:
   compared, so `+ ` with a stray space works. The exit keyword is matched
   case-insensitively, so `exit`, `Exit` and ` EXIT ` all end the session. The
   arithmetic operators themselves keep exact matching — `+` is still not the
-  same as `%`.
+  same as `&`.
+- **Power (`^`)** uses `Math.Pow`, because C#'s `^` operator is bitwise XOR
+  and is not defined for `double`. Like every other operation its result is
+  routed through the overflow guard, so `1e308 ^ 2` is reported rather than
+  printed as `Infinity`.
 
 ## Tests
 
 The [CI workflow](.github/workflows/ci.yml) compiles the program with `mcs -warn:4`
 and runs a set of smoke tests (a normal calculation, division by zero, a multi-calc
 session, `NaN`/`Infinity` rejection, a clean end-of-file exit, locale-independent
-number parsing/printing under `de_DE`, forgiving operator input, and overflow
+number parsing/printing under `de_DE`, forgiving operator input, power (`^`),
+modulo (`%`) including modulo-by-zero, and overflow
 results being reported rather than printed as `Infinity`) using `mono`.
 
 ## License

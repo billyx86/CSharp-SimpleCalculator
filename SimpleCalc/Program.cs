@@ -126,9 +126,36 @@ namespace SimpleCalculator
                         PrintOperationResult(numResult);
                         break;
                     }
-                    default:                                                                // Executes if the operator is none of "+", "-", "/", or "*".
+                    case "^":
                     {
-                        Console.WriteLine("Invalid input. The possible inputs were: Add (+), Subtract (-), Multiply (*), Divide (/), or Exit (exit).");
+                        // C#'s '^' operator is bitwise XOR and is not defined for
+                        // doubles, so exponentiation uses Math.Pow instead. The
+                        // result can overflow (1e308 ^ 2 exceeds double.MaxValue),
+                        // so it is routed through the same guard as the other
+                        // operations. (Issue #17)
+                        double numResult = Math.Pow(num1, num2);
+                        PrintOperationResult(numResult);
+                        break;
+                    }
+                    case "%":
+                    {
+                        // The double '%' operator returns NaN when the second
+                        // operand is zero, so it is guarded the same way division
+                        // is. (Issue #17)
+                        if (num2 == 0)
+                        {
+                            Console.WriteLine("Cannot take the modulo of zero.");
+                        }
+                        else
+                        {
+                            double numResult = num1 % num2;
+                            PrintOperationResult(numResult);
+                        }
+                        break;
+                    }
+                    default:                                                                // Executes if the operator is none of "+", "-", "/", "*", "^", or "%".
+                    {
+                        Console.WriteLine("Invalid input. The possible inputs were: Add (+), Subtract (-), Multiply (*), Divide (/), Power (^), Modulo (%), or Exit (exit).");
                         break;
                     }
                 }

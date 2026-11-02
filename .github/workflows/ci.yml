@@ -49,9 +49,34 @@ jobs:
           [ "$(echo "$OUT" | grep -c 'Enter your first number')" -eq 1 ]
           OUT=$(printf '1\n2\n EXIT \n' | mono SimpleCalc/bin/Calc.exe)
           [ "$(echo "$OUT" | grep -c 'Enter your first number')" -eq 1 ]
-          # A genuinely invalid operator is still rejected.
-          OUT=$(printf '1\n2\n%%\nexit\n' | mono SimpleCalc/bin/Calc.exe)
+          # A genuinely invalid operator is still rejected. ('%' used to be the
+          # test fixture here, but modulo is a real operator since #17.)
+          OUT=$(printf '1\n2\n&\nexit\n' | mono SimpleCalc/bin/Calc.exe)
           echo "$OUT" | grep -q 'Invalid input'
+      - name: "Smoke test (power ^, #17)"
+        run: |
+          # 2 ^ 10 = 1024
+          OUT=$(printf '2\n10\n^\nexit\n' | mono SimpleCalc/bin/Calc.exe)
+          echo "$OUT" | grep -q '^1024$'
+          # 2 ^ 0.5 = sqrt(2), an irrational result that prints with a dot.
+          OUT=$(printf '2\n0.5\n^\nexit\n' | mono SimpleCalc/bin/Calc.exe)
+          echo "$OUT" | grep -q '^1.4142135623731$'
+          # 1e308 ^ 2 overflows; it must be reported, not printed as Infinity.
+          OUT=$(printf '1e308\n2\n^\nexit\n' | mono SimpleCalc/bin/Calc.exe)
+          echo "$OUT" | grep -q 'Result overflowed'
+          ! echo "$OUT" | grep -q '^Infinity$'
+      - name: "Smoke test (modulo %, #17)"
+        run: |
+          # 10 % 4 = 2
+          OUT=$(printf '10\n4\n%%\nexit\n' | mono SimpleCalc/bin/Calc.exe)
+          echo "$OUT" | grep -q '^2$'
+          # 9 % 2.5 = 1.5 (floating-point modulo)
+          OUT=$(printf '9\n2.5\n%%\nexit\n' | mono SimpleCalc/bin/Calc.exe)
+          echo "$OUT" | grep -q '^1.5$'
+          # Modulo by zero is guarded, in the same style as division by zero.
+          OUT=$(printf '1\n0\n%%\nexit\n' | mono SimpleCalc/bin/Calc.exe)
+          echo "$OUT" | grep -q 'Cannot take the modulo of zero'
+          ! echo "$OUT" | grep -q '^NaN$'
       - name: "Smoke test (overflow results reported, not Infinity, #14)"
         run: |
           # 1e308 * 10 overflows double.MaxValue; it must not print "Infinity".
