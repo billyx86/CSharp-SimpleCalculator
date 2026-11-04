@@ -44,6 +44,25 @@ namespace SimpleCalculator
             }
         }
 
+        // Empties the remembered results, for the "clear" command. Without
+        // it the ring buffer keeps showing stale results for the whole
+        // session — once a user has run a few unrelated calculations,
+        // "history" is a mix they can only reset by restarting the program.
+        // Zeroing the count and the write pointer is enough for ShowHistory
+        // (it prints historyCount entries from historyNext), but the slots
+        // are blanked too so a future change to how the buffer is read can
+        // never resurface old values. (Issue #23)
+        static void ClearHistory()
+        {
+            for (int i = 0; i < HistorySize; i++)
+            {
+                history[i] = "";
+            }
+            historyCount = 0;
+            historyNext = 0;
+            Console.WriteLine("History cleared.");
+        }
+
         // Parses a number the same way no matter which locale the program is
         // running under. The default double.TryParse(input) follows the
         // current culture, so under e.g. de_DE "5.5" is read as 55 (the dot is
@@ -145,6 +164,15 @@ namespace SimpleCalculator
                 if (string.Equals(op, "history", StringComparison.OrdinalIgnoreCase))
                 {
                     ShowHistory();
+                    continue;                                                          // Loop back and ask for the next calculation.
+                }
+
+                // "clear" empties the remembered results, like "history" it
+                // is a command rather than an operator and is matched
+                // case-insensitively. (Issue #23)
+                if (string.Equals(op, "clear", StringComparison.OrdinalIgnoreCase))
+                {
+                    ClearHistory();
                     continue;                                                          // Loop back and ask for the next calculation.
                 }
 
