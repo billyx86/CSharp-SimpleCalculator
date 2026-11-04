@@ -66,6 +66,7 @@ Two numbers (whole or decimal), then an operator. The accepted operators are:
 | `%`    | Modulo      |
 | `exit` | End the session |
 | `history` | Show the results of the last 3 calculations |
+| `clear` | Forget all remembered results |
 
 Notes on edge cases:
 
@@ -78,6 +79,11 @@ Notes on edge cases:
   still overflow the arithmetic (`1e308 * 10`, `1e308 + 1e308`, `1e308 - -1e308`
   and `1e308 ^ 2` all exceed `double.MaxValue`, ~1.8e308); the program prints a
   friendly "result overflowed" message instead of `Infinity`.
+- **Undefined powers** are reported separately from overflow. A fractional
+  power of a negative base (for example `(-8) ^ 0.5`) is not a number that is
+  *too large* — it is simply not defined, and `Math.Pow` reports it as `NaN`.
+  The program prints "This power is not defined for the given numbers." for
+  that case, keeping it distinct from the overflow message.
 - **Invalid numbers or operators** print a message and simply re-prompt; they do
   not end the session.
 - **End of input** (for example when the program is run from a pipe and the input
@@ -130,8 +136,35 @@ Recent results (oldest first):
 ```
 
 Only successful, finite results are remembered — division/modulo by zero and
-overflowing results are not. When more than three results exist, the oldest
-one drops off.
+overflowing or undefined results are not. When more than three results exist,
+the oldest one drops off.
+
+Typing `clear` (case-insensitive, like `history`) where the operator is
+expected empties the remembered results and prints `History cleared.`:
+
+```
+Enter your first number:
+1
+Enter your second number:
+2
+Enter your operator type's symbol (or type exit):
++
+3
+Enter your first number:
+1
+Enter your second number:
+1
+Enter your operator type's symbol (or type exit):
+clear
+History cleared.
+Enter your first number:
+1
+Enter your second number:
+1
+Enter your operator type's symbol (or type exit):
+history
+No results yet.
+```
 
 ## Tests
 
@@ -139,8 +172,10 @@ The [CI workflow](.github/workflows/ci.yml) compiles the program with `mcs -warn
 and runs a set of smoke tests (a normal calculation, division by zero, a multi-calc
 session, `NaN`/`Infinity` rejection, a clean end-of-file exit, locale-independent
 number parsing/printing under `de_DE`, forgiving operator input, power (`^`),
-modulo (`%`) including modulo-by-zero, the `history` command, and overflow
-results being reported rather than printed as `Infinity`) using `mono`.
+modulo (`%`) including modulo-by-zero, the `history` command, the `clear`
+command, overflow results being reported rather than printed as `Infinity`, and
+undefined powers (`(-8) ^ 0.5`) getting their own not-defined message) using
+`mono`.
 
 ## License
 

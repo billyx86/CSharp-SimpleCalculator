@@ -109,7 +109,7 @@ jobs:
       - name: "Smoke test (overflow results reported, not Infinity, #14)"
         run: |
           # 1e308 * 10 overflows double.MaxValue; it must not print "Infinity".
-          OUT=$(printf '1e308\n10\n*\nexit\n' | mono SimpleCalc/bin/Calc.exe)
+          OUT=$(printf '%s\n' 1e308 10 '*' exit | mono SimpleCalc/bin/Calc.exe)
           echo "$OUT" | grep -q 'Result overflowed'
           ! echo "$OUT" | grep -q '^Infinity$'
           # 1e308 + 1e308 overflows too.
@@ -123,6 +123,50 @@ jobs:
           # A still-finite large result (1e308, which is < MaxValue) is NOT flagged.
           OUT=$(printf '1\n1e-308\n/\nexit\n' | mono SimpleCalc/bin/Calc.exe)
           ! echo "$OUT" | grep -q 'Result overflowed'
+      - name: "Smoke test (NaN result: undefined power, #22)"
+        run: |
+          # (-8) ^ 0.5 is a fractional power of a negative base: Math.Pow
+          # returns NaN, i.e. the power is *undefined* — not an overflow.
+          # It must get the not-defined message, not "too large".
+          OUT=$(printf '%s\n' -8 0.5 ^ exit | mono SimpleCalc/bin/Calc.exe)
+          echo "$OUT" | grep -q 'This power is not defined for the given numbers.'
+          ! echo "$OUT" | grep -q 'Result overflowed'
+          ! echo "$OUT" | grep -q '^NaN$'
+          # An overflowing power (1e308 ^ 2) is still reported as overflow —
+          # the two messages must not have been swapped.
+          OUT=$(printf '1e308\n2\n^\nexit\n' | mono SimpleCalc/bin/Calc.exe)
+          echo "$OUT" | grep -q 'Result overflowed'
+          ! echo "$OUT" | grep -q 'This power is not defined'
+      - name: "Smoke test (clear command, #23)"
+        run: |
+          # Two calculations (1+2=3, 4*5=20), history shows both, then
+          # 'clear' empties the buffer: history must say there are no
+          # results, and a fresh calculation afterwards appears alone.
+          OUT=$(printf '%s\n' 1 2 + 4 5 '*' 1 1 history 1 1 clear 1 1 history 2 2 + 1 1 history exit | mono SimpleCalc/bin/Calc.exe)
+          echo "$OUT" | grep -q 'History cleared.'
+          echo "$OUT" | grep -q 'No results yet.'
+          # After the clear, the next history shows only the new result (4),
+          # not the pre-clear ones (3, 20).
+          HIST=$(echo "$OUT" | sed -n '/No results yet./,$p' | sed -n '/Recent results/,$p')
+          echo "$HIST" | grep -q '^4$'
+          ! echo "$HIST" | grep -q '^3$'
+          ! echo "$HIST" | grep -q '^20$'
+          # clear is case-insensitive, like history and exit.
+          OUT=$(printf '%s\n' 1 2 + 1 1 CLEAR 1 1 history exit | mono SimpleCalc/bin/Calc.exe)
+          echo "$OUT" | grep -q 'History cleared.'
+          echo "$OUT" | grep -q 'No results yet.'
+          # clear wipes the results stored before it: 1+2=3 is remembered,
+          # cleared, then 3+4=7 — the history section must show only the 7
+          # (note: the 3 still appears once as the *printed* result of the
+          # first calculation, so only the history section is checked here).
+          OUT=$(printf '%s\n' 1 2 + 1 2 clear 3 4 + 1 1 history exit | mono SimpleCalc/bin/Calc.exe)
+          echo "$OUT" | grep -q 'History cleared.'
+          HIST=$(echo "$OUT" | sed -n '/Recent results/,$p')
+          echo "$HIST" | grep -q '^7$'
+          ! echo "$HIST" | grep -q '^3$'
+          # A non-finished calculation still re-prompts after clear.
+          OUT=$(printf '%s\n' 1 2 + 1 0 / 1 1 history exit | mono SimpleCalc/bin/Calc.exe)
+          echo "$OUT" | grep -q 'Cannot divide by zero'
       - name: "Guard (Program.cs stays minimal: no dead using directives, #13)"
         run: |
           # The exercise code is meant to teach C# basics with only the

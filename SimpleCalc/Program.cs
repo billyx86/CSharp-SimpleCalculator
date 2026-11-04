@@ -44,6 +44,25 @@ namespace SimpleCalculator
             }
         }
 
+        // Empties the remembered results, for the "clear" command. Without
+        // it the ring buffer keeps showing stale results for the whole
+        // session — once a user has run a few unrelated calculations,
+        // "history" is a mix they can only reset by restarting the program.
+        // Zeroing the count and the write pointer is enough for ShowHistory
+        // (it prints historyCount entries from historyNext), but the slots
+        // are blanked too so a future change to how the buffer is read can
+        // never resurface old values. (Issue #23)
+        static void ClearHistory()
+        {
+            for (int i = 0; i < HistorySize; i++)
+            {
+                history[i] = "";
+            }
+            historyCount = 0;
+            historyNext = 0;
+            Console.WriteLine("History cleared.");
+        }
+
         // Parses a number the same way no matter which locale the program is
         // running under. The default double.TryParse(input) follows the
         // current culture, so under e.g. de_DE "5.5" is read as 55 (the dot is
@@ -57,17 +76,25 @@ namespace SimpleCalculator
                                    CultureInfo.InvariantCulture, out number);
         }
 
-        // Prints the result of an operation — or a friendly overflow message if
-        // the arithmetic produced a non-finite value. The input validation
-        // above rejects NaN/Infinity inputs, but a result can still overflow
-        // even from perfectly valid numbers: 1e308 * 10, 1e308 + 1e308 or
-        // 1e308 - -1e308 all overflow double.MaxValue (~1.8e308), and 1e308 /
-        // 1e-308 overflows too. Rather than printing "Infinity" (which the
-        // program itself treats as an invalid number), report it the same
-        // way division by zero is reported. (Issue #14)
+        // Prints the result of an operation — or a friendly message if the
+        // arithmetic produced a non-finite value. The input validation above
+        // rejects NaN/Infinity inputs, but a result can still be non-finite
+        // even from perfectly valid numbers, in two distinct ways:
+        //  - Infinity: the answer is too large for a double. 1e308 * 10,
+        //    1e308 + 1e308, 1e308 - -1e308 and 1e308 / 1e-308 all overflow
+        //    double.MaxValue (~1.8e308). Report "try smaller numbers".
+        //  - NaN: the answer is undefined, not too large. Only Math.Pow can
+        //    produce this from valid finite inputs — a fractional power of a
+        //    negative base, e.g. (-8) ^ 0.5. Telling the user their numbers
+        //    are too large here would be wrong, so it gets its own message.
+        //    (Issue #14, refined by #22)
         static void PrintOperationResult(double numResult)
         {
-            if (double.IsNaN(numResult) || double.IsInfinity(numResult))
+            if (double.IsNaN(numResult))
+            {
+                Console.WriteLine("This power is not defined for the given numbers.");
+            }
+            else if (double.IsInfinity(numResult))
             {
                 Console.WriteLine("Result overflowed - the answer is too large for this calculator. Try smaller numbers.");
             }
@@ -137,6 +164,15 @@ namespace SimpleCalculator
                 if (string.Equals(op, "history", StringComparison.OrdinalIgnoreCase))
                 {
                     ShowHistory();
+                    continue;                                                          // Loop back and ask for the next calculation.
+                }
+
+                // "clear" empties the remembered results, like "history" it
+                // is a command rather than an operator and is matched
+                // case-insensitively. (Issue #23)
+                if (string.Equals(op, "clear", StringComparison.OrdinalIgnoreCase))
+                {
+                    ClearHistory();
                     continue;                                                          // Loop back and ask for the next calculation.
                 }
 
