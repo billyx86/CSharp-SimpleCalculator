@@ -109,7 +109,7 @@ jobs:
       - name: "Smoke test (overflow results reported, not Infinity, #14)"
         run: |
           # 1e308 * 10 overflows double.MaxValue; it must not print "Infinity".
-          OUT=$(printf '1e308\n10\n*\nexit\n' | mono SimpleCalc/bin/Calc.exe)
+          OUT=$(printf '%s\n' 1e308 10 '*' exit | mono SimpleCalc/bin/Calc.exe)
           echo "$OUT" | grep -q 'Result overflowed'
           ! echo "$OUT" | grep -q '^Infinity$'
           # 1e308 + 1e308 overflows too.
@@ -123,6 +123,20 @@ jobs:
           # A still-finite large result (1e308, which is < MaxValue) is NOT flagged.
           OUT=$(printf '1\n1e-308\n/\nexit\n' | mono SimpleCalc/bin/Calc.exe)
           ! echo "$OUT" | grep -q 'Result overflowed'
+      - name: "Smoke test (NaN result: undefined power, #22)"
+        run: |
+          # (-8) ^ 0.5 is a fractional power of a negative base: Math.Pow
+          # returns NaN, i.e. the power is *undefined* — not an overflow.
+          # It must get the not-defined message, not "too large".
+          OUT=$(printf '%s\n' -8 0.5 ^ exit | mono SimpleCalc/bin/Calc.exe)
+          echo "$OUT" | grep -q 'This power is not defined for the given numbers.'
+          ! echo "$OUT" | grep -q 'Result overflowed'
+          ! echo "$OUT" | grep -q '^NaN$'
+          # An overflowing power (1e308 ^ 2) is still reported as overflow —
+          # the two messages must not have been swapped.
+          OUT=$(printf '1e308\n2\n^\nexit\n' | mono SimpleCalc/bin/Calc.exe)
+          echo "$OUT" | grep -q 'Result overflowed'
+          ! echo "$OUT" | grep -q 'This power is not defined'
       - name: "Guard (Program.cs stays minimal: no dead using directives, #13)"
         run: |
           # The exercise code is meant to teach C# basics with only the

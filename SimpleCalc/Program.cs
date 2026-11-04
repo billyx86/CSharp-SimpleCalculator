@@ -57,17 +57,25 @@ namespace SimpleCalculator
                                    CultureInfo.InvariantCulture, out number);
         }
 
-        // Prints the result of an operation — or a friendly overflow message if
-        // the arithmetic produced a non-finite value. The input validation
-        // above rejects NaN/Infinity inputs, but a result can still overflow
-        // even from perfectly valid numbers: 1e308 * 10, 1e308 + 1e308 or
-        // 1e308 - -1e308 all overflow double.MaxValue (~1.8e308), and 1e308 /
-        // 1e-308 overflows too. Rather than printing "Infinity" (which the
-        // program itself treats as an invalid number), report it the same
-        // way division by zero is reported. (Issue #14)
+        // Prints the result of an operation — or a friendly message if the
+        // arithmetic produced a non-finite value. The input validation above
+        // rejects NaN/Infinity inputs, but a result can still be non-finite
+        // even from perfectly valid numbers, in two distinct ways:
+        //  - Infinity: the answer is too large for a double. 1e308 * 10,
+        //    1e308 + 1e308, 1e308 - -1e308 and 1e308 / 1e-308 all overflow
+        //    double.MaxValue (~1.8e308). Report "try smaller numbers".
+        //  - NaN: the answer is undefined, not too large. Only Math.Pow can
+        //    produce this from valid finite inputs — a fractional power of a
+        //    negative base, e.g. (-8) ^ 0.5. Telling the user their numbers
+        //    are too large here would be wrong, so it gets its own message.
+        //    (Issue #14, refined by #22)
         static void PrintOperationResult(double numResult)
         {
-            if (double.IsNaN(numResult) || double.IsInfinity(numResult))
+            if (double.IsNaN(numResult))
+            {
+                Console.WriteLine("This power is not defined for the given numbers.");
+            }
+            else if (double.IsInfinity(numResult))
             {
                 Console.WriteLine("Result overflowed - the answer is too large for this calculator. Try smaller numbers.");
             }
