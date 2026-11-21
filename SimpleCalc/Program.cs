@@ -10,10 +10,21 @@ namespace SimpleCalculator
         // HistorySize results are kept; older ones are overwritten. A plain
         // array is used (no List<T>) to stay at the same beginner level as the
         // rest of the program. (Issue #19)
-        const int HistorySize = 3;
+        // How many recent results the ring buffer keeps. Bumped from 3 to 10
+        // (issue #27) so a longer session doesn't drop results the user still
+        // wants to see; the buffer code works for any size, this constant was
+        // the only thing limiting it.
+        const int HistorySize = 10;
         static readonly string[] history = new string[HistorySize];
         static int historyCount = 0;   // How many results are stored (at most HistorySize).
         static int historyNext = 0;    // Where the next result is written.
+
+        // The last finite result, so the user can type "ans" in place of the
+        // first number to reuse it in the next calculation — like the Ans key
+        // on a real calculator (issue #26). Reset by "clear", since clearing
+        // the history means forgetting the remembered results too.
+        static double lastResult = 0;
+        static bool haveLastResult = false;
 
         // Remember a result string so ShowHistory can print it. Once the
         // buffer is full the oldest entry is overwritten. (Issue #19)
@@ -60,6 +71,11 @@ namespace SimpleCalculator
             }
             historyCount = 0;
             historyNext = 0;
+            // "clear" forgets the remembered results, so the reusable Ans
+            // value goes with them (issue #26): the next "ans" must not
+            // resurrect a result the user just cleared away.
+            haveLastResult = false;
+            lastResult = 0;
             Console.WriteLine("History cleared.");
         }
 
@@ -102,6 +118,12 @@ namespace SimpleCalculator
             {
                 Console.WriteLine(numResult.ToString(CultureInfo.InvariantCulture));
                 RememberResult(numResult.ToString(CultureInfo.InvariantCulture));
+                // Also remember the result so the user can reuse it with
+                // "ans" (issue #26). Only the finite branch does this: an
+                // overflow or undefined-power result never becomes the
+                // reusable value.
+                lastResult = numResult;
+                haveLastResult = true;
             }
         }
 
@@ -121,7 +143,19 @@ namespace SimpleCalculator
                     break;
                 }
                 double num1;
-                if (TryParseNumber(firstInput, out num1) == false || double.IsNaN(num1) || double.IsInfinity(num1))   // Converts the string into the double "num1". It also rejects "NaN", "Infinity" and "-Infinity", which TryParse would otherwise happily accept as numbers.
+                if (string.Equals(firstInput.Trim(), "ans", StringComparison.OrdinalIgnoreCase))
+                {
+                    // "ans" reuses the last finite result as the first number, like
+                    // the Ans key on a real calculator (issue #26). It is matched
+                    // case-insensitively and trimmed, like the operator keywords.
+                    if (haveLastResult == false)
+                    {
+                        Console.WriteLine("No result to reuse yet - do a calculation first, or type a number.");
+                        continue;                                               // Re-prompt rather than ending the session.
+                    }
+                    num1 = lastResult;
+                }
+                else if (TryParseNumber(firstInput, out num1) == false || double.IsNaN(num1) || double.IsInfinity(num1))   // Converts the string into the double "num1". It also rejects "NaN", "Infinity" and "-Infinity", which TryParse would otherwise happily accept as numbers.
                 {
                     Console.WriteLine("Invalid number. The possible inputs were real numbers, for example 5 or -3.5.");  // Tells the user the number is not a real number.
                     continue;                                               // Skip to the next calculation rather than ending the whole session.
@@ -240,7 +274,7 @@ namespace SimpleCalculator
                     }
                     default:                                                                // Executes if the operator is none of "+", "-", "/", "*", "^", or "%".
                     {
-                        Console.WriteLine("Invalid input. The possible inputs were: Add (+), Subtract (-), Multiply (*), Divide (/), Power (^), Modulo (%), or Exit (exit).");
+                        Console.WriteLine("Invalid input. The possible inputs were: Add (+), Subtract (-), Multiply (*), Divide (/), Power (^), Modulo (%), History (history), Clear (clear), Ans (ans), or Exit (exit).");
                         break;
                     }
                 }
