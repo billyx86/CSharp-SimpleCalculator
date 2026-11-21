@@ -65,8 +65,9 @@ Two numbers (whole or decimal), then an operator. The accepted operators are:
 | `^`    | Power       |
 | `%`    | Modulo      |
 | `exit` | End the session |
-| `history` | Show the results of the last 3 calculations |
-| `clear` | Forget all remembered results |
+| `history` | Show the results of the last 10 calculations |
+| `clear` | Forget all remembered results (including `ans`) |
+| `ans`   | Use as a first number to reuse the last result |
 
 Notes on edge cases:
 
@@ -106,7 +107,7 @@ Notes on edge cases:
 ## History
 
 Typing `history` (case-insensitive, like `exit`) where the operator is
-expected prints the results of the last three calculations, oldest first, and
+expected prints the results of the last ten calculations, oldest first, and
 then continues the session:
 
 ```
@@ -136,7 +137,7 @@ Recent results (oldest first):
 ```
 
 Only successful, finite results are remembered — division/modulo by zero and
-overflowing or undefined results are not. When more than three results exist,
+overflowing or undefined results are not. When more than ten results exist,
 the oldest one drops off.
 
 Typing `clear` (case-insensitive, like `history`) where the operator is
@@ -166,6 +167,40 @@ history
 No results yet.
 ```
 
+## Reusing the last result (`ans`)
+
+Typing `ans` (case-insensitive, trimmed, like the other keywords) in place of
+the *first* number reuses the last finite result as the first operand — like
+the `Ans` key on a real calculator:
+
+```
+Enter your first number:
+1
+Enter your second number:
+2
+Enter your operator type's symbol (or type exit):
++
+3
+Enter your first number:
+ans
+Enter your second number:
+10
+Enter your operator type's symbol (or type exit):
+*
+30
+```
+
+A few edge cases:
+
+- **Before any result exists**, `ans` is rejected with
+  `No result to reuse yet - do a calculation first, or type a number.` and
+  the session continues.
+- **Non-finite results never become the reusable value** — an overflowing
+  or undefined-power result is printed (or reported) but does not update
+  `ans`, so `ans` after `1e308 * 10` still says there is nothing to reuse.
+- **`clear` forgets it too** — clearing the history also resets `ans`, since
+  clearing the remembered results means forgetting them for reuse as well.
+
 ## Tests
 
 The [CI workflow](.github/workflows/ci.yml) compiles the program with `mcs -warn:4`
@@ -175,7 +210,10 @@ number parsing/printing under `de_DE`, forgiving operator input, power (`^`),
 modulo (`%`) including modulo-by-zero, the `history` command, the `clear`
 command, overflow results being reported rather than printed as `Infinity`, and
 undefined powers (`(-8) ^ 0.5`) getting their own not-defined message) using
-`mono`.
+`mono`. It also checks that the invalid-input hint lists the `history`,
+`clear` and `ans` commands (#25), and that `ans` reuses the last finite result
+while staying out of the way when there is nothing to reuse, after a
+non-finite result, and after `clear` (#26).
 
 ## License
 

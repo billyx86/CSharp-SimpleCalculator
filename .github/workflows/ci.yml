@@ -88,13 +88,14 @@ jobs:
           # The history command is case-insensitive, like exit.
           OUT=$(printf '1\n2\n+\n7\n8\n*\n1\n1\nHISTORY\nexit\n' | mono SimpleCalc/bin/Calc.exe)
           echo "$OUT" | grep -q 'Recent results (oldest first):'
-          # Only the last 3 results are kept: 4 calcs (3, 20, 6, 8) then history
-          # must show 20, 6 and 8 — the oldest result (3) has dropped off.
-          OUT=$(printf '1\n2\n+\n4\n5\n*\n7\n1\n-\n3\n5\n+\n1\n1\nhistory\nexit\n' | mono SimpleCalc/bin/Calc.exe)
-          HIST=$(echo "$OUT" | sed -n '/Recent results/,$p')
-          echo "$HIST" | grep -q '^20$'
-          echo "$HIST" | grep -q '^6$'
-          echo "$HIST" | grep -q '^8$'
+          # With HistorySize now 10 (issue #27): 11 calculations (results
+          # 3, 4, 5, ... 13) then history must keep exactly the last 10 —
+          # 4 through 13 — and drop the oldest (3).
+          INPUT=$(for i in $(seq 1 11); do printf '%d\n2\n+\n' "$i"; done; printf '1\n1\nhistory\nexit\n')
+          OUT=$(echo "$INPUT" | mono SimpleCalc/bin/Calc.exe)
+          HIST=$(echo "$OUT" | sed -n '/Recent results/,/Enter your first number/p' | sed '1d;$d' | sed '/^$/d')
+          [ "$(echo "$HIST" | grep -c '^[0-9]\+$')" -eq 10 ]
+          for n in 4 5 6 7 8 9 10 11 12 13; do echo "$HIST" | grep -q "^$n$"; done
           ! echo "$HIST" | grep -q '^3$'
           # With no results yet, history says so and the session continues.
           OUT=$(printf '1\n2\nhistory\n3\n4\n+\nexit\n' | mono SimpleCalc/bin/Calc.exe)
@@ -167,6 +168,37 @@ jobs:
           # A non-finished calculation still re-prompts after clear.
           OUT=$(printf '%s\n' 1 2 + 1 0 / 1 1 history exit | mono SimpleCalc/bin/Calc.exe)
           echo "$OUT" | grep -q 'Cannot divide by zero'
+      - name: "Smoke test (invalid-input hint lists all commands, #25)"
+        run: |
+          # A deliberately misspelled command must get the full hint, which now
+          # names the history, clear and ans commands as well as the operators.
+          # (grep -F: the message contains regex metacharacters like the '*' in
+          # "Multiply (*)", so a fixed-string match is required.)
+          OUT=$(printf '1\n2\nhistroy\nexit\n' | mono SimpleCalc/bin/Calc.exe)
+          echo "$OUT" | grep -Fq 'Invalid input. The possible inputs were: Add (+), Subtract (-), Multiply (*), Divide (/), Power (^), Modulo (%), History (history), Clear (clear), Ans (ans), or Exit (exit).'
+      - name: "Smoke test (ans reuses the last result, #26)"
+        run: |
+          # 1 + 2 = 3, then "ans" as the first number reuses the 3: ans * 10 = 30.
+          OUT=$(printf '1\n2\n+\nans\n10\n*\nexit\n' | mono SimpleCalc/bin/Calc.exe)
+          echo "$OUT" | grep -q '^3$'
+          echo "$OUT" | grep -q '^30$'
+          # ans is case-insensitive and trimmed, like the operator keywords.
+          OUT=$(printf '1\n2\n+\n  ANS  \n10\n*\nexit\n' | mono SimpleCalc/bin/Calc.exe)
+          echo "$OUT" | grep -q '^30$'
+          # Before any result exists, ans is rejected with a friendly message
+          # and the session continues (5 + 5 = 10 afterwards).
+          OUT=$(printf 'ans\n5\n5\n+\n1\n1\nexit\n' | mono SimpleCalc/bin/Calc.exe)
+          echo "$OUT" | grep -q 'No result to reuse yet'
+          echo "$OUT" | grep -q '^10$'
+          # A non-finite result is never the reusable value: 1e308 * 10
+          # overflows, so the following ans must say there is nothing to reuse.
+          OUT=$(printf '1e308\n10\n*\nans\n1\n+\nexit\n' | mono SimpleCalc/bin/Calc.exe)
+          echo "$OUT" | grep -q 'Result overflowed'
+          echo "$OUT" | grep -q 'No result to reuse yet'
+          # "clear" forgets the Ans value with the rest of the history.
+          OUT=$(printf '1\n2\n+\n1\n1\nclear\nans\n5\n+\nexit\n' | mono SimpleCalc/bin/Calc.exe)
+          echo "$OUT" | grep -q 'History cleared.'
+          echo "$OUT" | grep -q 'No result to reuse yet'
       - name: "Guard (Program.cs stays minimal: no dead using directives, #13)"
         run: |
           # The exercise code is meant to teach C# basics with only the
